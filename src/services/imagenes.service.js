@@ -115,6 +115,42 @@ export async function addImagenes(id_producto, files = []) {
   }
 }
 
+/** Imágenes enviadas como JSON base64 (evita multipart / HTTP2 en Railway). */
+export async function addImagenesBase64(id_producto, images = []) {
+  if (!Array.isArray(images) || !images.length) {
+    throw new ApiError(400, 'Debe enviar al menos una imagen');
+  }
+
+  const allowed = new Set(['image/jpeg', 'image/png', 'image/webp']);
+  const files = images.map((img, index) => {
+    const mime = String(img.mime || img.contentType || '').toLowerCase();
+    if (!allowed.has(mime)) {
+      throw new ApiError(400, 'Formato de imagen no permitido. Use JPEG, PNG o WEBP');
+    }
+    const raw = String(img.data || '').replace(/^data:[^;]+;base64,/, '');
+    let buffer;
+    try {
+      buffer = Buffer.from(raw, 'base64');
+    } catch {
+      throw new ApiError(400, 'Imagen base64 inválida');
+    }
+    if (!buffer.length) {
+      throw new ApiError(400, 'Imagen vacía');
+    }
+    const max = env.maxFileSizeMb * 1024 * 1024;
+    if (buffer.length > max) {
+      throw new ApiError(413, `El archivo supera el máximo de ${env.maxFileSizeMb} MB`);
+    }
+    return {
+      buffer,
+      mimetype: mime,
+      originalname: img.nombre || `imagen-${index + 1}.jpg`
+    };
+  });
+
+  return addImagenes(id_producto, files);
+}
+
 export async function deleteImagen(id_producto, id_imagen) {
   const connection = await pool.getConnection();
   try {
@@ -225,6 +261,7 @@ export async function uploadFilesForNewProduct(id_producto, files = []) {
 export default {
   listImagenes,
   addImagenes,
+  addImagenesBase64,
   deleteImagen,
   setImagenPrincipal,
   uploadFilesForNewProduct

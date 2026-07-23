@@ -10,6 +10,15 @@ export const add = asyncHandler(async (req, res) => {
   return success(res, data, 'Imágenes agregadas', 201);
 });
 
+export const addBase64 = asyncHandler(async (req, res) => {
+  const images = req.body?.imagenes || req.body?.images || [];
+  const data = await imagenesService.addImagenesBase64(
+    Number(req.params.id),
+    images
+  );
+  return success(res, data, 'Imágenes agregadas', 201);
+});
+
 export const remove = asyncHandler(async (req, res) => {
   await imagenesService.deleteImagen(
     Number(req.params.id),

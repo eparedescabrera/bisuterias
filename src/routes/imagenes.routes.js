@@ -7,7 +7,11 @@ import { param } from 'express-validator';
 
 const router = Router({ mergeParams: true });
 
+/** Multipart clásico (local / herramientas) */
 router.post('/', uploadProductImages, imagenesController.add);
+
+/** JSON base64: más estable en Railway (evita ERR_HTTP2 con FormData) */
+router.post('/json', imagenesController.addBase64);
 
 router.delete(
   '/:idImagen',

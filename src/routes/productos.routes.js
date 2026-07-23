@@ -14,6 +14,15 @@ import { uploadProductImages } from '../middlewares/upload.middleware.js';
 
 const router = Router();
 
+/** Multer solo si el request es multipart; permite crear producto en JSON puro. */
+function optionalProductUpload(req, res, next) {
+  const ct = req.headers['content-type'] || '';
+  if (ct.includes('multipart/form-data')) {
+    return uploadProductImages(req, res, next);
+  }
+  return next();
+}
+
 function parseDatosMiddleware(req, _res, next) {
   if (req.body?.datos && typeof req.body.datos === 'string') {
     try {
@@ -67,7 +76,7 @@ router.get(
 
 router.post(
   '/',
-  uploadProductImages,
+  optionalProductUpload,
   parseDatosMiddleware,
   createProductoValidators,
   validationMiddleware,

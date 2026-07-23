@@ -76,21 +76,14 @@ async function issueSession(usuario, req, res) {
 
   setAuthCookies(res, { accessToken, refreshToken, sessionId, csrf });
 
+  // accessToken en body: el SPA lo guarda en memoria (no localStorage).
+  // Necesario con frontend y API en dominios distintos (Vercel / Railway).
   return {
-    // Token en body solo para herramientas API (Thunder Client).
-    // El panel React NO debe guardarlo: usa cookies HttpOnly (Documento 8).
-    ...(includeTokenInBody(req) ? { token: accessToken, accessToken } : {}),
+    token: accessToken,
+    accessToken,
     csrfToken: csrf,
     usuario: publicUser(usuario)
   };
-}
-
-function includeTokenInBody(req) {
-  // Opt-in explícito; nunca forzar localStorage en el frontend.
-  return (
-    req?.get?.('X-Include-Token') === '1' ||
-    req?.query?.include_token === '1'
-  );
 }
 
 export async function login(nombre_usuario, password, req, res) {
@@ -215,7 +208,8 @@ export async function refresh(req, res) {
   });
 
   return {
-    ...(includeTokenInBody(req) ? { token: accessToken, accessToken } : {}),
+    token: accessToken,
+    accessToken,
     csrfToken: csrf,
     usuario: publicUser(usuario)
   };

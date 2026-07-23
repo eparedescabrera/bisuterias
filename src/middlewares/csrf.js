@@ -1,11 +1,14 @@
 import ApiError from '../utils/ApiError.js';
 import { CSRF_COOKIE, ACCESS_COOKIE } from '../utils/tokens.js';
+import env from '../config/env.js';
 
 const WRITE_METHODS = new Set(['POST', 'PUT', 'PATCH', 'DELETE']);
 
 /**
- * CSRF doble envío cuando la autenticación usa cookies.
- * Clientes solo con Authorization Bearer (sin cookie access) se omiten (Doc 8).
+ * CSRF:
+ * - Bearer → omitir (SPA cross-origin / herramientas API)
+ * - Origin en CORS_ORIGINS → omitir (el navegador envía Origin real; no es falsificable en XHR)
+ * - Cookie same-site sin Origin confiable → doble envío clásico
  */
 export function csrfProtection(req, _res, next) {
   if (!WRITE_METHODS.has(req.method)) {
@@ -17,17 +20,16 @@ export function csrfProtection(req, _res, next) {
     return next();
   }
 
-  const accessCookie = req.cookies?.[ACCESS_COOKIE];
-  const hasBearer = Boolean(
-    req.headers.authorization?.startsWith('Bearer ')
-  );
-
-  // Herramientas API / Thunder Client: Bearer sin cookie → sin CSRF
-  if (!accessCookie && hasBearer) {
+  if (req.headers.authorization?.startsWith('Bearer ')) {
     return next();
   }
 
-  // Sin cookie de sesión: authenticate responderá 401
+  const origin = req.get('Origin');
+  if (origin && env.corsOrigins.includes(origin)) {
+    return next();
+  }
+
+  const accessCookie = req.cookies?.[ACCESS_COOKIE];
   if (!accessCookie) {
     return next();
   }
