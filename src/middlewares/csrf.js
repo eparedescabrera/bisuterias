@@ -1,48 +1,18 @@
-import ApiError from '../utils/ApiError.js';
-import { CSRF_COOKIE, ACCESS_COOKIE } from '../utils/tokens.js';
-import env from '../config/env.js';
-
-const WRITE_METHODS = new Set(['POST', 'PUT', 'PATCH', 'DELETE']);
-
 /**
- * CSRF:
- * - Bearer → omitir (SPA cross-origin / herramientas API)
- * - Origin en CORS_ORIGINS → omitir (el navegador envía Origin real; no es falsificable en XHR)
- * - Cookie same-site sin Origin confiable → doble envío clásico
+ * CSRF middleware (Documento 8).
+ *
+ * En este proyecto el panel está en Vercel y la API en Railway (orígenes distintos).
+ * El patrón de doble cookie CSRF no aplica: JavaScript en Vercel no puede leer
+ * la cookie csrf_token emitida por Railway.
+ *
+ * Protección real de escrituras:
+ * - CORS restringido a CORS_ORIGINS
+ * - JWT (cookie HttpOnly y/o Authorization Bearer)
+ * - requireAdmin en /api/admin
+ *
+ * Se deja el middleware como no-op para no romper el orden de rutas.
  */
-export function csrfProtection(req, _res, next) {
-  if (!WRITE_METHODS.has(req.method)) {
-    return next();
-  }
-
-  const full = req.originalUrl || '';
-  if (full.includes('/api/auth/login') || full.includes('/api/auth/refresh')) {
-    return next();
-  }
-
-  if (req.headers.authorization?.startsWith('Bearer ')) {
-    return next();
-  }
-
-  const origin = req.get('Origin');
-  if (origin && env.corsOrigins.includes(origin)) {
-    return next();
-  }
-
-  const accessCookie = req.cookies?.[ACCESS_COOKIE];
-  if (!accessCookie) {
-    return next();
-  }
-
-  const header = req.get('X-CSRF-Token') || req.get('x-csrf-token');
-  const cookie = req.cookies?.[CSRF_COOKIE];
-
-  if (!header || !cookie || header !== cookie) {
-    return next(
-      new ApiError(403, 'Token CSRF inválido o ausente', [], 'FORBIDDEN')
-    );
-  }
-
+export function csrfProtection(_req, _res, next) {
   return next();
 }
 
