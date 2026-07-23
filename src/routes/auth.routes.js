@@ -7,7 +7,6 @@ import {
 import validationMiddleware from '../middlewares/validation.middleware.js';
 import { authenticate } from '../middlewares/authenticate.js';
 import { loginRateLimiter } from '../middlewares/rateLimiters.js';
-import { csrfProtection } from '../middlewares/csrf.js';
 
 const router = Router();
 
@@ -21,7 +20,7 @@ router.post(
 
 router.post('/refresh', authController.refresh);
 
-router.post('/logout', authenticate, csrfProtection, authController.logout);
+router.post('/logout', authenticate, authController.logout);
 
 router.get('/perfil', authenticate, authController.perfil);
 router.get('/me', authenticate, authController.me);
@@ -29,7 +28,6 @@ router.get('/me', authenticate, authController.me);
 router.put(
   '/cambiar-password',
   authenticate,
-  csrfProtection,
   changePasswordValidators,
   validationMiddleware,
   authController.cambiarPassword
@@ -38,7 +36,6 @@ router.put(
 router.patch(
   '/change-password',
   authenticate,
-  csrfProtection,
   changePasswordValidators,
   validationMiddleware,
   authController.cambiarPassword

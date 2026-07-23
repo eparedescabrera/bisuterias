@@ -90,7 +90,8 @@ app.get('/api/health', async (_req, res) => {
     {
       api: 'ok',
       database,
-      environment: env.nodeEnv
+      environment: env.nodeEnv,
+      build: '2026-07-23-no-csrf'
     },
     database === 'ok' ? 'API operativa' : 'API con falla de base de datos',
     database === 'ok' ? 200 : 503
