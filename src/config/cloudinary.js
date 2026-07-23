@@ -22,7 +22,10 @@ export function configureCloudinary() {
 
 export function assertCloudinaryReady() {
   if (!configured && !configureCloudinary()) {
-    throw new ApiError(500, 'Cloudinary no está configurado');
+    throw new ApiError(
+      500,
+      'Cloudinary no está configurado en el servidor. En Railway agregue CLOUDINARY_CLOUD_NAME, CLOUDINARY_API_KEY y CLOUDINARY_API_SECRET y haga Redeploy.'
+    );
   }
 }
 

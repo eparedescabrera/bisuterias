@@ -85,13 +85,20 @@ app.get('/api/health', async (_req, res) => {
     database = 'error';
   }
 
+  const cloudinaryConfigured = Boolean(
+    env.cloudinary.cloudName &&
+      env.cloudinary.apiKey &&
+      env.cloudinary.apiSecret
+  );
+
   return success(
     res,
     {
       api: 'ok',
       database,
+      cloudinary: cloudinaryConfigured ? 'ok' : 'missing',
       environment: env.nodeEnv,
-      build: '2026-07-23-cloudinary-errors'
+      build: '2026-07-23-cloudinary-health'
     },
     database === 'ok' ? 'API operativa' : 'API con falla de base de datos',
     database === 'ok' ? 200 : 503
