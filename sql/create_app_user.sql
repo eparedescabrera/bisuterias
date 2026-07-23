@@ -1,0 +1,7 @@
+-- Usuario de aplicación (Documento 8).
+-- Preferible: npm run db:app-user  (crea invpro_app y actualiza backend/.env)
+--
+-- Manual (como root), si lo prefieres:
+-- CREATE USER IF NOT EXISTS 'invpro_app'@'%' IDENTIFIED BY 'TU_PASSWORD_FUERTE';
+-- GRANT SELECT, INSERT, UPDATE, DELETE ON railway.* TO 'invpro_app'@'%';
+-- FLUSH PRIVILEGES;
