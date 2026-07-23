@@ -55,6 +55,7 @@ export const updateProductoValidators = [
   body('stock_minimo').optional().isInt({ min: 0 }),
   body('unidad_medida').optional().isIn(unidades),
   body('estado_publicacion').optional().isIn(publicaciones),
+  body('estado_disponibilidad').optional().isIn(disponibilidades),
   body('destacado').optional().isBoolean()
 ];
 

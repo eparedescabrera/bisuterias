@@ -370,7 +370,7 @@ export async function updateProducto(id, payload) {
       descripcion_corta = ?, descripcion_completa = ?,
       precio_venta = ?, precio_anterior = ?, stock_minimo = ?,
       unidad_medida = ?, marca = ?, color_estilo = ?, material = ?,
-      personalizable = ?, estado_publicacion = ?, destacado = ?
+      personalizable = ?, estado_disponibilidad = ?, estado_publicacion = ?, destacado = ?
     WHERE id_producto = ?
   `,
     [
@@ -404,6 +404,7 @@ export async function updateProducto(id, payload) {
         : current.personalizable
           ? 1
           : 0,
+      payload.estado_disponibilidad ?? current.estado_disponibilidad,
       payload.estado_publicacion ?? current.estado_publicacion,
       payload.destacado !== undefined
         ? payload.destacado
