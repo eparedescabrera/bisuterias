@@ -278,7 +278,7 @@ export async function createProducto(payload, files = [], id_usuario) {
         `
         INSERT INTO movimientos_inventario
           (id_producto, tipo_movimiento, cantidad, stock_anterior, stock_nuevo, motivo, referencia, id_usuario)
-        VALUES (?, 'Entrada', ?, 0, ?, 'Stock inicial', NULL, ?)
+        VALUES (?, 'Stock inicial', ?, 0, ?, 'Inventario inicial', NULL, ?)
       `,
         [id_producto, stock_inicial, stock_inicial, id_usuario]
       );

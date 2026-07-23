@@ -40,6 +40,18 @@ export function errorMiddleware(err, req, res, _next) {
     });
   }
 
+  // Body JSON demasiado grande (p. ej. imagen base64)
+  if (err?.type === 'entity.too.large' || err?.status === 413) {
+    return res.status(413).json({
+      success: false,
+      message:
+        'El archivo es demasiado grande. Use una imagen más liviana (recomendado < 1 MB).',
+      errorCode: 'PAYLOAD_TOO_LARGE',
+      requestId,
+      errors: []
+    });
+  }
+
   if (err instanceof multer.MulterError) {
     if (err.code === 'LIMIT_FILE_SIZE') {
       return res.status(413).json({

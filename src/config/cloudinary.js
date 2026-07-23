@@ -39,7 +39,14 @@ export function uploadBufferToCloudinary(buffer, folder, publicId = undefined) {
       },
       (error, result) => {
         if (error) {
-          reject(error);
+          reject(
+            new ApiError(
+              502,
+              `No se pudo subir la imagen a Cloudinary: ${error.message || 'error desconocido'}`,
+              [],
+              'INTERNAL_ERROR'
+            )
+          );
           return;
         }
         resolve(result);
