@@ -10,7 +10,13 @@ const SENSITIVE_KEYS = new Set([
   'accessToken',
   'refreshToken',
   'authorization',
-  'cookie'
+  'cookie',
+  'nombre_usuario',
+  'usuario',
+  'user',
+  'username',
+  'correo',
+  'email'
 ]);
 
 function scrub(meta) {

@@ -118,7 +118,8 @@ export function errorMiddleware(err, req, res, _next) {
   }
 
   if (env.nodeEnv !== 'production') {
-    console.error(`[${requestId}]`, err);
+    // Nunca volcar req.body: puede contener contraseñas
+    console.error(`[${requestId}]`, err?.message || err);
   } else {
     console.error(`[${requestId}]`, err.message);
   }

@@ -3,7 +3,9 @@ import ApiError from '../utils/ApiError.js';
 import {
   comparePassword,
   hashPassword,
-  assertPasswordPolicy
+  assertPasswordPolicy,
+  verifyPasswordOrDummy,
+  fingerprintIdentifier
 } from '../utils/passwords.js';
 import {
   createSessionId,
@@ -89,6 +91,8 @@ async function issueSession(usuario, req, res) {
 export async function login(nombre_usuario, password, req, res) {
   const ip = getClientIp(req);
   const ua = getUserAgent(req);
+  // Nunca auditar ni devolver el usuario/contraseña en claro
+  const intentoId = fingerprintIdentifier(nombre_usuario);
 
   const [rows] = await pool.query(
     `
@@ -102,29 +106,21 @@ export async function login(nombre_usuario, password, req, res) {
     [nombre_usuario]
   );
 
-  if (!rows.length || !rows[0].estado) {
+  const usuario = rows[0];
+  const hash = usuario?.estado ? usuario.password_hash : null;
+  const ok = await verifyPasswordOrDummy(password, hash);
+
+  if (!usuario || !usuario.estado || !ok) {
     await auditoria.registrar({
+      id_usuario: usuario?.estado ? usuario.id_usuario : null,
       accion: 'login_fallido',
       recurso: 'auth',
       resultado: 'fail',
       ip,
       user_agent: ua,
-      metadata: { nombre_usuario }
+      metadata: { intento_id: intentoId }
     });
-    throw new ApiError(401, 'Credenciales incorrectas', [], 'UNAUTHORIZED');
-  }
-
-  const usuario = rows[0];
-  const ok = await comparePassword(password, usuario.password_hash);
-  if (!ok) {
-    await auditoria.registrar({
-      id_usuario: usuario.id_usuario,
-      accion: 'login_fallido',
-      recurso: 'auth',
-      resultado: 'fail',
-      ip,
-      user_agent: ua
-    });
+    // Mensaje único: no revelar si el usuario existe o la contraseña falló
     throw new ApiError(401, 'Credenciales incorrectas', [], 'UNAUTHORIZED');
   }
 

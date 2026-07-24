@@ -11,7 +11,12 @@ const BASE = (process.env.API_PUBLIC_URL || 'http://localhost:3000').replace(
   ''
 );
 const USER = process.env.ADMIN_USER || 'admin';
-const PASS = process.env.ADMIN_PASSWORD || 'Gama1234';
+const PASS = process.env.ADMIN_PASSWORD;
+
+if (!PASS) {
+  console.error('Defina ADMIN_PASSWORD en .env para ejecutar las pruebas.');
+  process.exit(1);
+}
 
 const results = [];
 

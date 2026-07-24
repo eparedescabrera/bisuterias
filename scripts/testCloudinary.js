@@ -29,11 +29,13 @@ async function login() {
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({
       nombre_usuario: 'admin',
-      password: process.env.ADMIN_PASSWORD || 'Gama1234'
+      password: process.env.ADMIN_PASSWORD
     })
   });
   const json = await res.json();
-  if (!json?.data?.token) throw new Error('Login falló');
+  if (!process.env.ADMIN_PASSWORD || !json?.data?.token) {
+    throw new Error('Login falló (defina ADMIN_PASSWORD en .env)');
+  }
   return json.data.token;
 }
 

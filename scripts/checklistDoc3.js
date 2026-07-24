@@ -52,8 +52,16 @@ async function run() {
   );
 
   const loginOk = await req('POST', '/api/auth/login', {
-    body: { nombre_usuario: 'admin', password: process.env.ADMIN_PASSWORD || 'Gama1234' }
+    body: {
+      nombre_usuario: process.env.ADMIN_USER || 'admin',
+      password: process.env.ADMIN_PASSWORD
+    }
   });
+  if (!process.env.ADMIN_PASSWORD) {
+    mark('Login correcto devuelve token', false, 'Defina ADMIN_PASSWORD en .env');
+    console.log('\nAbortado: falta ADMIN_PASSWORD');
+    process.exit(1);
+  }
   const token = loginOk.json?.data?.token;
   mark('Login correcto devuelve token', loginOk.ok && !!token);
 
