@@ -241,6 +241,29 @@ async function run() {
     console.log('OK configuracion_negocio.id_empresa');
   }
 
+  // Enlace Google Maps por empresa (página pública / contacto)
+  if (!(await columnExists(conn, 'configuracion_negocio', 'mapa_url'))) {
+    await conn.query(
+      `
+      ALTER TABLE configuracion_negocio
+      ADD COLUMN mapa_url VARCHAR(600) NULL AFTER direccion
+    `
+    );
+    console.log('OK configuracion_negocio.mapa_url');
+  }
+
+  // Seed mapa Accesorios Anny (idempotente si está vacío)
+  await conn.query(
+    `
+    UPDATE configuracion_negocio c
+    INNER JOIN empresas e ON e.id_empresa = c.id_empresa
+    SET c.mapa_url = ?
+    WHERE e.slug = 'accesorios-anny'
+      AND (c.mapa_url IS NULL OR c.mapa_url = '')
+  `,
+    ['https://maps.app.goo.gl/HAsjz82zZhCPQyNi8']
+  );
+
   console.log('\nMultiempresa aplicado.');
   await conn.end();
 }

@@ -4,6 +4,7 @@ import {
   destroyCloudinaryAsset
 } from '../config/cloudinary.js';
 import ApiError from '../utils/ApiError.js';
+import { normalizeMapaUrl, resolveMapsDisplay } from '../utils/mapsUrl.js';
 
 function normalizeWhatsapp(value) {
   if (value === undefined || value === null || value === '') return null;
@@ -82,6 +83,10 @@ export async function getConfiguracionAdmin(id_empresa) {
 
 export async function getConfiguracionPublica(id_empresa) {
   const config = await getConfiguracionAdmin(id_empresa);
+  const maps = resolveMapsDisplay({
+    mapa_url: config.mapa_url,
+    direccion: config.direccion
+  });
   return {
     nombre_negocio: config.nombre_negocio,
     descripcion: config.descripcion,
@@ -91,6 +96,8 @@ export async function getConfiguracionPublica(id_empresa) {
     whatsapp: config.whatsapp,
     correo: config.correo,
     direccion: config.direccion,
+    mapa_url: maps.link,
+    mapa_embed_url: maps.embed,
     facebook: config.facebook,
     instagram: config.instagram,
     moneda: config.moneda,
@@ -102,6 +109,7 @@ export async function getConfiguracionPublica(id_empresa) {
 
 export async function updateConfiguracion(id_empresa, payload) {
   await getConfiguracionAdmin(id_empresa);
+  const mapa_url = normalizeMapaUrl(payload.mapa_url);
 
   await pool.query(
     `
@@ -112,6 +120,7 @@ export async function updateConfiguracion(id_empresa, payload) {
       whatsapp = ?,
       correo = ?,
       direccion = ?,
+      mapa_url = ?,
       facebook = ?,
       instagram = ?,
       moneda = ?,
@@ -127,6 +136,7 @@ export async function updateConfiguracion(id_empresa, payload) {
       normalizeWhatsapp(payload.whatsapp),
       payload.correo ?? null,
       payload.direccion ?? null,
+      mapa_url,
       payload.facebook ?? null,
       payload.instagram ?? null,
       payload.moneda || 'CRC',

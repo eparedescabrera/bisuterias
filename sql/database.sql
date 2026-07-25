@@ -123,6 +123,7 @@ CREATE TABLE IF NOT EXISTS configuracion_negocio (
     whatsapp VARCHAR(30) NULL,
     correo VARCHAR(150) NULL,
     direccion VARCHAR(350) NULL,
+    mapa_url VARCHAR(600) NULL,
     facebook VARCHAR(300) NULL,
     instagram VARCHAR(300) NULL,
     moneda CHAR(3) NOT NULL DEFAULT 'CRC',

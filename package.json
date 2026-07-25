@@ -13,6 +13,7 @@
     "db:verify": "node scripts/verificarBaseDatos.js",
     "db:security": "node scripts/aplicarSeguridadDoc8.js",
     "db:multiempresa": "node scripts/aplicarMultiempresa.js",
+    "db:mapa": "node scripts/aplicarMapaUrl.js",
     "db:super-admin": "node scripts/crearSuperAdmin.js",
     "db:app-user": "node scripts/crearUsuarioAppMysql.js",
     "test:security": "node scripts/securityTests.js"
