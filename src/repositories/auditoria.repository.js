@@ -100,9 +100,9 @@ export async function listar(query = {}) {
     LEFT JOIN usuarios u ON u.id_usuario = a.id_usuario
     WHERE ${whereSql}
     ORDER BY a.fecha_creacion DESC, a.id_auditoria DESC
-    LIMIT ${Number(limite)} OFFSET ${Number(offset)}
+    LIMIT ? OFFSET ?
   `,
-    params
+    [...params, Number(limite), Number(offset)]
   );
 
   return { data: rows, meta: buildMeta(count.total, pagina, limite) };

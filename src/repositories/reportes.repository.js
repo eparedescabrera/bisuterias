@@ -51,9 +51,9 @@ export async function inventarioActual(id_empresa, query = {}) {
       ON i.id_producto = p.id_producto AND i.es_principal = 1 AND i.activo = 1
     WHERE ${whereSql}
     ORDER BY p.nombre ASC
-    LIMIT ${Number(limite)} OFFSET ${Number(offset)}
+    LIMIT ? OFFSET ?
   `,
-    params
+    [...params, Number(limite), Number(offset)]
   );
 
   return {
@@ -126,9 +126,9 @@ export async function kardex(id_empresa, query = {}) {
     INNER JOIN usuarios u ON u.id_usuario = m.id_usuario
     WHERE ${whereSql}
     ORDER BY m.fecha_movimiento DESC, m.id_movimiento DESC
-    LIMIT ${Number(limite)} OFFSET ${Number(offset)}
+    LIMIT ? OFFSET ?
   `,
-    params
+    [...params, Number(limite), Number(offset)]
   );
 
   return { data: rows, meta: buildMeta(count.total, pagina, limite) };

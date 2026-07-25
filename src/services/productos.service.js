@@ -4,6 +4,10 @@ import ApiError from '../utils/ApiError.js';
 import { uniqueSlug } from '../utils/slug.js';
 import { parsePagination, buildMeta } from '../utils/pagination.js';
 import { uploadFilesForNewProduct } from './imagenes.service.js';
+import {
+  PRODUCTO_ORDER_ADMIN,
+  resolveOrderBy
+} from '../utils/sqlSafe.js';
 
 async function slugExists(id_empresa, slug, excludeId = null) {
   const params = [id_empresa, slug];
@@ -58,26 +62,6 @@ function mapProductPayload(payload) {
     estado_publicacion: payload.estado_publicacion || 'Publicado',
     destacado: payload.destacado ? 1 : 0
   };
-}
-
-function orderClause(orden) {
-  switch (orden) {
-    case 'nombre_asc':
-      return 'p.nombre ASC';
-    case 'nombre_desc':
-      return 'p.nombre DESC';
-    case 'precio_asc':
-      return 'p.precio_venta ASC';
-    case 'precio_desc':
-      return 'p.precio_venta DESC';
-    case 'stock_asc':
-      return 'p.stock_actual ASC';
-    case 'stock_desc':
-      return 'p.stock_actual DESC';
-    case 'recientes':
-    default:
-      return 'p.fecha_creacion DESC';
-  }
 }
 
 export async function getProductoAdminById(id_empresa, id) {
@@ -194,7 +178,7 @@ export async function listProductos(id_empresa, query = {}) {
     LEFT JOIN producto_imagenes i
       ON i.id_producto = p.id_producto AND i.es_principal = 1 AND i.activo = 1
     WHERE ${whereSql}
-    ORDER BY ${orderClause(query.orden)}
+    ORDER BY ${resolveOrderBy(query.orden, PRODUCTO_ORDER_ADMIN, 'recientes')}
     LIMIT ? OFFSET ?
   `,
     [...params, limite, offset]

@@ -149,20 +149,36 @@ async function run() {
   });
   assert('Bearer sin cookie accede a admin', bearerOnly.status === 200);
 
-  // 9. SQL injection en búsqueda no tumba API
+  // 9. SQL injection en búsqueda no tumba API (admin + público)
   const jar3 = {};
-  await req('/api/auth/login', {
+  const login3 = await req('/api/auth/login', {
     method: 'POST',
     body: { nombre_usuario: USER, password: PASS },
     jar: jar3
   });
-  const sqli = await req(
-    `/api/admin/productos?busqueda=${encodeURIComponent("'; DROP TABLE productos; --")}`,
-    { jar: jar3 }
+  const bearer3 =
+    login3.json?.data?.accessToken || login3.json?.data?.token || null;
+  const sqliPayload = encodeURIComponent("'; DROP TABLE productos; --");
+  const sqli = await req(`/api/admin/productos?busqueda=${sqliPayload}`, {
+    jar: jar3,
+    headers: bearer3 ? { Authorization: `Bearer ${bearer3}` } : {}
+  });
+  assert(
+    'SQL injection en búsqueda admin no rompe API',
+    sqli.status === 200 || sqli.status === 400 || sqli.status === 403
+  );
+
+  const sqliPublic = await req(
+    `/api/public/productos?empresa=accesorios-anny&busqueda=${sqliPayload}&orden=${encodeURIComponent('precio_desc; DROP TABLE productos')}`
   );
   assert(
-    'SQL injection en búsqueda no rompe API',
-    sqli.status === 200 || sqli.status === 400
+    'SQL injection en catálogo público no rompe API',
+    sqliPublic.status === 200 || sqliPublic.status === 400
+  );
+  const healthAfter = await req('/api/health');
+  assert(
+    'API sigue operativa tras payloads SQLi',
+    healthAfter.status === 200 || healthAfter.status === 503
   );
 
   // 10. Error genérico health

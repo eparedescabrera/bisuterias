@@ -158,13 +158,23 @@ export async function updateConfiguracion(id_empresa, payload) {
   return getConfiguracionAdmin(id_empresa);
 }
 
+const ASSET_FIELDS = {
+  logo_url: 'logo_public_id',
+  portada_url: 'portada_public_id'
+};
+
 async function replaceAsset(id_empresa, fieldUrl, fieldPublicId, file, folder) {
+  if (ASSET_FIELDS[fieldUrl] !== fieldPublicId) {
+    throw new ApiError(500, 'Campos de asset no permitidos');
+  }
+
   const current = await getConfiguracionAdmin(id_empresa);
   const previousPublicId = current[fieldPublicId];
 
   const uploaded = await uploadBufferToCloudinary(file.buffer, folder);
 
   try {
+    // sql-safe-ok: fieldUrl/fieldPublicId solo desde whitelist ASSET_FIELDS
     await pool.query(
       `
       UPDATE configuracion_negocio

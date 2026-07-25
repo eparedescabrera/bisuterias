@@ -100,9 +100,9 @@ export async function topProductosSalidas(id_empresa, desdeDT, hastaDT, limite =
       AND p.activo = 1
     GROUP BY p.id_producto, p.codigo, p.nombre, i.imagen_url
     ORDER BY unidades_salida DESC
-    LIMIT ${limit}
+    LIMIT ?
   `,
-    [id_empresa, desdeDT, hastaDT, TIPOS_SALIDA]
+    [id_empresa, desdeDT, hastaDT, TIPOS_SALIDA, limit]
   );
   return rows.map((r) => ({
     id_producto: r.id_producto,
@@ -185,9 +185,9 @@ export async function ultimosMovimientos(id_empresa, limite = 10) {
     INNER JOIN usuarios u ON u.id_usuario = m.id_usuario
     WHERE p.id_empresa = ?
     ORDER BY m.fecha_movimiento DESC, m.id_movimiento DESC
-    LIMIT ${limit}
+    LIMIT ?
   `,
-    [id_empresa]
+    [id_empresa, limit]
   );
   return rows;
 }

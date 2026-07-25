@@ -16,7 +16,8 @@
     "db:mapa": "node scripts/aplicarMapaUrl.js",
     "db:super-admin": "node scripts/crearSuperAdmin.js",
     "db:app-user": "node scripts/crearUsuarioAppMysql.js",
-    "test:security": "node scripts/securityTests.js"
+    "test:security": "node scripts/securityTests.js",
+    "test:sqli": "node scripts/checkSqlInjection.js"
   },
   "dependencies": {
     "bcryptjs": "^2.4.3",

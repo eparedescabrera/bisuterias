@@ -2,22 +2,10 @@ import pool from '../config/database.js';
 import ApiError from '../utils/ApiError.js';
 import { parsePagination, buildMeta } from '../utils/pagination.js';
 import { getConfiguracionPublica } from './configuracion.service.js';
-
-function orderClause(orden) {
-  switch (orden) {
-    case 'nombre_asc':
-      return 'p.nombre ASC';
-    case 'nombre_desc':
-      return 'p.nombre DESC';
-    case 'precio_asc':
-      return 'p.precio_venta ASC';
-    case 'precio_desc':
-      return 'p.precio_venta DESC';
-    case 'recientes':
-    default:
-      return 'p.destacado DESC, p.fecha_creacion DESC';
-  }
-}
+import {
+  PRODUCTO_ORDER_PUBLIC,
+  resolveOrderBy
+} from '../utils/sqlSafe.js';
 
 export async function listCategoriasPublicas(id_empresa) {
   const [rows] = await pool.query(
@@ -93,7 +81,7 @@ export async function listProductosPublicos(id_empresa, query = {}) {
     LEFT JOIN producto_imagenes i
       ON i.id_producto = p.id_producto AND i.es_principal = 1 AND i.activo = 1
     WHERE ${whereSql}
-    ORDER BY ${orderClause(query.orden)}
+    ORDER BY ${resolveOrderBy(query.orden, PRODUCTO_ORDER_PUBLIC, 'recientes')}
     LIMIT ? OFFSET ?
   `,
     [...params, limite, offset]

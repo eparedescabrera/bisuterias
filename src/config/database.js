@@ -10,7 +10,9 @@ const pool = mysql.createPool({
   waitForConnections: true,
   connectionLimit: 10,
   queueLimit: 0,
-  charset: 'utf8mb4'
+  charset: 'utf8mb4',
+  // Evita multi-statement (reducir impacto si hubiera inyección)
+  multipleStatements: false
 });
 
 export async function testDatabaseConnection() {
