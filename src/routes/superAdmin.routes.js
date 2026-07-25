@@ -1,11 +1,12 @@
 import { Router } from 'express';
 import authMiddleware from '../middlewares/auth.middleware.js';
 import { requireSuperAdmin } from '../middlewares/empresa.middleware.js';
+import csrfProtection from '../middlewares/csrf.js';
 import * as ctrl from '../controllers/superAdmin.controller.js';
 
 const router = Router();
 
-router.use(authMiddleware, requireSuperAdmin);
+router.use(authMiddleware, requireSuperAdmin, csrfProtection);
 
 router.get('/dashboard', ctrl.dashboard);
 router.get('/empresas', ctrl.empresas);

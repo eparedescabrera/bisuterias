@@ -43,6 +43,24 @@ export const loginRateLimiter = rateLimit({
   }
 });
 
+/** Registro de suscripción: evita spam de empresas Pendiente */
+export const signupRateLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  max: 5,
+  standardHeaders: true,
+  legacyHeaders: false,
+  handler: (_req, res) => {
+    res.setHeader('Retry-After', '900');
+    return res.status(429).json({
+      success: false,
+      message:
+        'Demasiadas solicitudes de suscripción. Intente de nuevo más tarde.',
+      errorCode: 'RATE_LIMITED',
+      errors: []
+    });
+  }
+});
+
 export const exportRateLimiter = rateLimit({
   windowMs: 15 * 60 * 1000,
   max: 20,

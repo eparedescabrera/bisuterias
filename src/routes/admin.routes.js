@@ -2,6 +2,7 @@ import { Router } from 'express';
 import authMiddleware from '../middlewares/auth.middleware.js';
 import { requireAdmin } from '../middlewares/role.middleware.js';
 import { requireEmpresaActiva } from '../middlewares/empresa.middleware.js';
+import csrfProtection from '../middlewares/csrf.js';
 import categoriasRoutes from './categorias.routes.js';
 import productosRoutes from './productos.routes.js';
 import imagenesRoutes from './imagenes.routes.js';
@@ -13,8 +14,8 @@ import seguridadRoutes from './seguridad.routes.js';
 
 const router = Router();
 
-// JWT + Administrador de empresa + empresa Activa
-router.use(authMiddleware, requireAdmin, requireEmpresaActiva);
+// JWT + Administrador + empresa Activa + CSRF (Bearer en escrituras)
+router.use(authMiddleware, requireAdmin, requireEmpresaActiva, csrfProtection);
 
 router.use('/categorias', categoriasRoutes);
 router.use('/productos', productosRoutes);

@@ -46,22 +46,15 @@ export async function assertProductoDeEmpresa(id_empresa, id_producto) {
   }
 }
 
-export async function addImagenes(id_producto, files = [], id_empresa = null) {
+export async function addImagenes(id_producto, files = [], id_empresa) {
+  if (id_empresa == null) {
+    throw new ApiError(403, 'Empresa requerida para subir imágenes', [], 'FORBIDDEN');
+  }
   if (!files.length) {
     throw new ApiError(400, 'Debe enviar al menos una imagen');
   }
 
-  if (id_empresa != null) {
-    await assertProductoDeEmpresa(id_empresa, id_producto);
-  } else {
-    const [producto] = await pool.query(
-      'SELECT id_producto FROM productos WHERE id_producto = ? AND activo = 1 LIMIT 1',
-      [id_producto]
-    );
-    if (!producto.length) {
-      throw new ApiError(404, 'Producto no encontrado');
-    }
-  }
+  await assertProductoDeEmpresa(id_empresa, id_producto);
 
   const actuales = await countActiveImages(id_producto);
   if (actuales + files.length > env.maxProductImages) {
@@ -91,7 +84,7 @@ export async function addImagenes(id_producto, files = [], id_empresa = null) {
     for (const file of files) {
       const result = await uploadBufferToCloudinary(
         file.buffer,
-        `inventory-pro/productos/${id_producto}`
+        `inventory-pro/empresas/${id_empresa}/productos/${id_producto}`
       );
       uploaded.push(result.public_id);
 
@@ -134,7 +127,10 @@ export async function addImagenes(id_producto, files = [], id_empresa = null) {
 }
 
 /** Imágenes enviadas como JSON base64 (evita multipart / HTTP2 en Railway). */
-export async function addImagenesBase64(id_producto, images = []) {
+export async function addImagenesBase64(id_producto, images = [], id_empresa) {
+  if (id_empresa == null) {
+    throw new ApiError(403, 'Empresa requerida para subir imágenes', [], 'FORBIDDEN');
+  }
   if (!Array.isArray(images) || !images.length) {
     throw new ApiError(400, 'Debe enviar al menos una imagen');
   }
@@ -159,6 +155,24 @@ export async function addImagenesBase64(id_producto, images = []) {
     if (buffer.length > max) {
       throw new ApiError(413, `El archivo supera el máximo de ${env.maxFileSizeMb} MB`);
     }
+    // Magic bytes básicos (evita MIME spoof trivial)
+    const isJpeg = buffer[0] === 0xff && buffer[1] === 0xd8;
+    const isPng =
+      buffer[0] === 0x89 &&
+      buffer[1] === 0x50 &&
+      buffer[2] === 0x4e &&
+      buffer[3] === 0x47;
+    const isWebp =
+      buffer.length > 12 &&
+      buffer.toString('ascii', 0, 4) === 'RIFF' &&
+      buffer.toString('ascii', 8, 12) === 'WEBP';
+    if (
+      (mime === 'image/jpeg' && !isJpeg) ||
+      (mime === 'image/png' && !isPng) ||
+      (mime === 'image/webp' && !isWebp)
+    ) {
+      throw new ApiError(400, 'El contenido del archivo no coincide con el formato declarado');
+    }
     return {
       buffer,
       mimetype: mime,
@@ -166,7 +180,7 @@ export async function addImagenesBase64(id_producto, images = []) {
     };
   });
 
-  return addImagenes(id_producto, files);
+  return addImagenes(id_producto, files, id_empresa);
 }
 
 export async function deleteImagen(id_producto, id_imagen) {

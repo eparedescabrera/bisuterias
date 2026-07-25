@@ -13,14 +13,12 @@ export const add = asyncHandler(async (req, res) => {
 });
 
 export const addBase64 = asyncHandler(async (req, res) => {
-  await imagenesService.assertProductoDeEmpresa(
-    getEmpresaId(req),
-    Number(req.params.id)
-  );
+  const idEmpresa = getEmpresaId(req);
   const images = req.body?.imagenes || req.body?.images || [];
   const data = await imagenesService.addImagenesBase64(
     Number(req.params.id),
-    images
+    images,
+    idEmpresa
   );
   return success(res, data, 'Imágenes agregadas', 201);
 });

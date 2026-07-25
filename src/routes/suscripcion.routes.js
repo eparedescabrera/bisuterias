@@ -2,6 +2,7 @@ import { Router } from 'express';
 import * as suscripcionController from '../controllers/suscripcion.controller.js';
 import { body } from 'express-validator';
 import validationMiddleware from '../middlewares/validation.middleware.js';
+import { signupRateLimiter } from '../middlewares/rateLimiters.js';
 
 const router = Router();
 
@@ -9,6 +10,7 @@ router.get('/planes', suscripcionController.planes);
 
 router.post(
   '/solicitar',
+  signupRateLimiter,
   [
     body('nombre_negocio').trim().isLength({ min: 2, max: 160 }),
     body('propietario').trim().isLength({ min: 2, max: 150 }),

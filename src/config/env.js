@@ -77,10 +77,21 @@ export function assertEnv() {
         'MYSQLUSER=root está prohibido en producción (Documento 8). Use un usuario de aplicación con privilegios mínimos.'
       );
     }
-    if (env.corsOrigins.some((o) => o === '*' || o.includes('localhost'))) {
+    if (
+      env.corsOrigins.some(
+        (o) =>
+          o === '*' ||
+          o.includes('*') ||
+          o.includes('localhost') ||
+          o.includes('127.0.0.1')
+      )
+    ) {
       throw new Error(
-        'CORS_ORIGINS de producción no debe incluir localhost ni *'
+        'CORS_ORIGINS de producción no debe incluir localhost, 127.0.0.1 ni *'
       );
+    }
+    if (!env.corsOrigins.length) {
+      throw new Error('CORS_ORIGINS debe incluir al menos un origen en producción');
     }
   } else if (String(env.mysql.user).toLowerCase() === 'root') {
     console.warn(

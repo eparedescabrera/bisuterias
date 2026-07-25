@@ -106,7 +106,7 @@ app.get('/api/health', async (_req, res) => {
       database,
       cloudinary: cloudinaryConfigured ? 'ok' : 'missing',
       environment: env.nodeEnv,
-      build: '2026-07-24-multiempresa'
+      build: '2026-07-24-security-hardening'
     },
     database === 'ok' ? 'API operativa' : 'API con falla de base de datos',
     database === 'ok' ? 200 : 503
