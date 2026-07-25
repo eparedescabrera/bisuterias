@@ -4,12 +4,14 @@ import { verifyAccessToken, ACCESS_COOKIE } from '../utils/tokens.js';
 import pool from '../config/database.js';
 
 function extractToken(req) {
-  const cookieToken = req.cookies?.[ACCESS_COOKIE];
-  if (cookieToken) return { token: cookieToken, via: 'cookie' };
-
+  // Preferir Bearer del SPA: en multiempresa evita mezclar sesiones
+  // si la cookie httpOnly quedó de otro login en el mismo navegador.
   const header = req.headers.authorization || '';
   const [scheme, token] = header.split(' ');
   if (scheme === 'Bearer' && token) return { token, via: 'bearer' };
+
+  const cookieToken = req.cookies?.[ACCESS_COOKIE];
+  if (cookieToken) return { token: cookieToken, via: 'cookie' };
 
   return { token: null, via: null };
 }
