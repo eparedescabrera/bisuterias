@@ -42,7 +42,7 @@ export async function authenticate(req, _res, next) {
     const [rows] = await pool.query(
       `
       SELECT u.id_usuario, u.nombre_completo, u.nombre_usuario, u.estado,
-             r.nombre AS rol
+             u.id_empresa, r.nombre AS rol
       FROM usuarios u
       INNER JOIN roles r ON r.id_rol = u.id_rol
       WHERE u.id_usuario = ?
@@ -59,7 +59,8 @@ export async function authenticate(req, _res, next) {
       id_usuario: rows[0].id_usuario,
       nombre_completo: rows[0].nombre_completo,
       nombre_usuario: rows[0].nombre_usuario,
-      rol: rows[0].rol
+      rol: rows[0].rol,
+      id_empresa: rows[0].id_empresa == null ? null : Number(rows[0].id_empresa)
     };
     req.authVia = via;
 

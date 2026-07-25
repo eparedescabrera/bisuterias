@@ -9,36 +9,36 @@ function withPeriod(query) {
   return { ...query, ...periodo };
 }
 
-export async function inventario(query) {
-  return repo.inventarioActual(query);
+export async function inventario(id_empresa, query) {
+  return repo.inventarioActual(id_empresa, query);
 }
 
-export async function kardex(query) {
-  return repo.kardex(withPeriod(query));
+export async function kardex(id_empresa, query) {
+  return repo.kardex(id_empresa, withPeriod(query));
 }
 
-export async function rotacion(query) {
+export async function rotacion(id_empresa, query) {
   const periodo = resolvePeriodo(query);
-  return repo.rotacion({ ...query, ...periodo });
+  return repo.rotacion(id_empresa, { ...query, ...periodo });
 }
 
-export async function valoracion() {
-  return repo.valoracion();
+export async function valoracion(id_empresa) {
+  return repo.valoracion(id_empresa);
 }
 
-export async function ajustes(query) {
-  return repo.ajustes(withPeriod(query));
+export async function ajustes(id_empresa, query) {
+  return repo.ajustes(id_empresa, withPeriod(query));
 }
 
-export async function porCategoria() {
-  return repo.inventarioPorCategoria();
+export async function porCategoria(id_empresa) {
+  return repo.inventarioPorCategoria(id_empresa);
 }
 
-export async function exportar(query, usuario) {
+export async function exportar(id_empresa, query, usuario) {
   const reporte = query.reporte || 'inventario';
   let formato = (query.formato || 'xlsx').toLowerCase();
   if (formato === 'excel') formato = 'xlsx';
-  const negocio = await repo.getNegocio();
+  const negocio = await repo.getNegocio(id_empresa);
   const periodo = resolvePeriodo(query);
 
   let title = 'Reporte';
@@ -47,7 +47,11 @@ export async function exportar(query, usuario) {
 
   if (reporte === 'inventario') {
     title = 'Inventario actual';
-    const result = await repo.inventarioActual({ ...query, pagina: 1, limite: 100 });
+    const result = await repo.inventarioActual(id_empresa, {
+      ...query,
+      pagina: 1,
+      limite: 100
+    });
     columns = [
       { key: 'codigo', header: 'Código' },
       { key: 'nombre', header: 'Producto' },
@@ -64,7 +68,11 @@ export async function exportar(query, usuario) {
     }));
   } else if (reporte === 'kardex') {
     title = 'Kardex';
-    const result = await repo.kardex({ ...withPeriod(query), pagina: 1, limite: 100 });
+    const result = await repo.kardex(id_empresa, {
+      ...withPeriod(query),
+      pagina: 1,
+      limite: 100
+    });
     columns = [
       { key: 'fecha_movimiento', header: 'Fecha' },
       { key: 'codigo', header: 'Código' },
@@ -79,7 +87,7 @@ export async function exportar(query, usuario) {
     rows = result.data;
   } else if (reporte === 'valoracion') {
     title = 'Valoración de inventario';
-    const data = await repo.valoracion();
+    const data = await repo.valoracion(id_empresa);
     columns = [
       { key: 'concepto', header: 'Concepto' },
       { key: 'valor', header: 'Valor' }
@@ -93,7 +101,7 @@ export async function exportar(query, usuario) {
     ];
   } else if (reporte === 'rotacion') {
     title = 'Rotación de productos';
-    const data = await repo.rotacion({ ...withPeriod(query) });
+    const data = await repo.rotacion(id_empresa, { ...withPeriod(query) });
     columns = [
       { key: 'tipo', header: 'Tipo' },
       { key: 'codigo', header: 'Código' },
@@ -116,7 +124,7 @@ export async function exportar(query, usuario) {
     ];
   } else if (reporte === 'ajustes') {
     title = 'Ajustes y diferencias';
-    const result = await repo.ajustes({
+    const result = await repo.ajustes(id_empresa, {
       ...withPeriod(query),
       pagina: 1,
       limite: 100

@@ -5,15 +5,14 @@ import {
   pctChange
 } from '../utils/datePeriod.js';
 
-/** Compatibilidad Doc 3: resumen simple + Doc 7 con período */
-export async function getResumen(query = {}) {
+export async function getResumen(id_empresa, query = {}) {
   const periodo = resolvePeriodo(query);
   const prev = previousPeriod(periodo.desde, periodo.hasta);
 
   const [stock, mov, movPrev] = await Promise.all([
-    repo.kpiStock(),
-    repo.sumMovimientos(periodo.desdeDT, periodo.hastaDT),
-    repo.sumMovimientos(prev.desdeDT, prev.hastaDT)
+    repo.kpiStock(id_empresa),
+    repo.sumMovimientos(id_empresa, periodo.desdeDT, periodo.hastaDT),
+    repo.sumMovimientos(id_empresa, prev.desdeDT, prev.hastaDT)
   ]);
 
   return {
@@ -22,7 +21,6 @@ export async function getResumen(query = {}) {
       hasta: periodo.hasta,
       label: periodo.label
     },
-    // Doc 3 flat keys (compat)
     total_productos: stock.productos_activos,
     productos_publicados: stock.productos_activos,
     stock_bajo: Number(stock.stock_bajo),
@@ -31,7 +29,6 @@ export async function getResumen(query = {}) {
     entradas_hoy: Number(mov.entradas),
     salidas_hoy: Number(mov.salidas),
     movimientos_mes: Number(mov.movimientos),
-    // Doc 7 structure
     kpis: {
       productosActivos: Number(stock.productos_activos),
       unidadesInventario: Number(stock.unidades_inventario),
@@ -56,40 +53,45 @@ export async function getResumen(query = {}) {
   };
 }
 
-export async function getMovimientosDiarios(query = {}) {
+export async function getMovimientosDiarios(id_empresa, query = {}) {
   const periodo = resolvePeriodo(query);
-  return repo.movimientosDiarios(periodo.desdeDT, periodo.hastaDT);
+  return repo.movimientosDiarios(id_empresa, periodo.desdeDT, periodo.hastaDT);
 }
 
-export async function getStockCategoria() {
-  return repo.stockPorCategoria();
+export async function getStockCategoria(id_empresa) {
+  return repo.stockPorCategoria(id_empresa);
 }
 
-export async function getTopProductos(query = {}) {
+export async function getTopProductos(id_empresa, query = {}) {
   const periodo = resolvePeriodo(query);
   const limite = Math.min(20, Math.max(1, Number(query.limite || 10)));
-  return repo.topProductosSalidas(periodo.desdeDT, periodo.hastaDT, limite);
+  return repo.topProductosSalidas(
+    id_empresa,
+    periodo.desdeDT,
+    periodo.hastaDT,
+    limite
+  );
 }
 
-export async function getAlertasStock() {
-  return repo.alertasStock();
+export async function getAlertasStock(id_empresa) {
+  return repo.alertasStock(id_empresa);
 }
 
-export async function getUltimosMovimientos(limite = 10) {
-  return repo.ultimosMovimientos(limite);
+export async function getUltimosMovimientos(id_empresa, limite = 10) {
+  return repo.ultimosMovimientos(id_empresa, limite);
 }
 
-export async function getProductosPorCategoria() {
-  return repo.stockPorCategoria();
+export async function getProductosPorCategoria(id_empresa) {
+  return repo.stockPorCategoria(id_empresa);
 }
 
-export async function getSinMovimiento(query = {}) {
-  return repo.sinMovimiento(query.dias);
+export async function getSinMovimiento(id_empresa, query = {}) {
+  return repo.sinMovimiento(id_empresa, query.dias);
 }
 
-export async function getMovimientosPorTipo(query = {}) {
+export async function getMovimientosPorTipo(id_empresa, query = {}) {
   const periodo = resolvePeriodo(query);
-  return repo.movimientosPorTipo(periodo.desdeDT, periodo.hastaDT);
+  return repo.movimientosPorTipo(id_empresa, periodo.desdeDT, periodo.hastaDT);
 }
 
 export default {

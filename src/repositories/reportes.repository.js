@@ -8,13 +8,13 @@ function mapTipoGrupo(tipo) {
   if (t === 'ENTRADA' || t === 'ENTRADAS') return TIPOS_ENTRADA;
   if (t === 'SALIDA' || t === 'SALIDAS') return TIPOS_SALIDA;
   if (t === 'AJUSTE' || t === 'AJUSTES') return TIPOS_AJUSTE;
-  return [tipo]; // valor exacto Doc 2
+  return [tipo];
 }
 
-export async function inventarioActual(query = {}) {
+export async function inventarioActual(id_empresa, query = {}) {
   const { pagina, limite, offset } = parsePagination(query);
-  const where = ['p.activo = 1'];
-  const params = [];
+  const where = ['p.activo = 1', 'p.id_empresa = ?'];
+  const params = [id_empresa];
 
   if (query.id_categoria || query.categoriaId) {
     where.push('p.id_categoria = ?');
@@ -68,10 +68,10 @@ export async function inventarioActual(query = {}) {
   };
 }
 
-export async function kardex(query = {}) {
+export async function kardex(id_empresa, query = {}) {
   const { pagina, limite, offset } = parsePagination(query);
-  const where = ['1=1'];
-  const params = [];
+  const where = ['p.id_empresa = ?'];
+  const params = [id_empresa];
 
   if (query.desdeDT && query.hastaDT) {
     where.push('m.fecha_movimiento BETWEEN ? AND ?');
@@ -134,7 +134,7 @@ export async function kardex(query = {}) {
   return { data: rows, meta: buildMeta(count.total, pagina, limite) };
 }
 
-export async function rotacion(query = {}) {
+export async function rotacion(id_empresa, query = {}) {
   const { desdeDT, hastaDT } = query;
   const dias = Math.min(365, Math.max(7, Number(query.dias || 30)));
 
@@ -149,13 +149,13 @@ export async function rotacion(query = {}) {
       ON m.id_producto = p.id_producto
      AND m.fecha_movimiento BETWEEN ? AND ?
      AND m.tipo_movimiento IN (?)
-    WHERE p.activo = 1
+    WHERE p.activo = 1 AND p.id_empresa = ?
     GROUP BY p.id_producto, p.codigo, p.nombre, p.stock_actual, c.nombre
     HAVING unidades_salida > 0
     ORDER BY unidades_salida DESC
     LIMIT 20
   `,
-    [desdeDT, hastaDT, TIPOS_SALIDA]
+    [desdeDT, hastaDT, TIPOS_SALIDA, id_empresa]
   );
 
   const [baja] = await pool.query(
@@ -168,13 +168,13 @@ export async function rotacion(query = {}) {
     LEFT JOIN movimientos_inventario m
       ON m.id_producto = p.id_producto
      AND m.tipo_movimiento IN (?)
-    WHERE p.activo = 1 AND p.stock_actual > 0
+    WHERE p.activo = 1 AND p.stock_actual > 0 AND p.id_empresa = ?
     GROUP BY p.id_producto, p.codigo, p.nombre, p.stock_actual, c.nombre, p.fecha_creacion
     HAVING dias_sin_salida >= ?
     ORDER BY dias_sin_salida DESC
     LIMIT 20
   `,
-    [TIPOS_SALIDA, dias]
+    [TIPOS_SALIDA, id_empresa, dias]
   );
 
   return {
@@ -188,15 +188,18 @@ export async function rotacion(query = {}) {
   };
 }
 
-export async function valoracion() {
-  const [[row]] = await pool.query(`
+export async function valoracion(id_empresa) {
+  const [[row]] = await pool.query(
+    `
     SELECT
       COALESCE(SUM(stock_actual * precio_venta), 0) AS valor_venta,
       COUNT(*) AS productos_activos,
       COALESCE(SUM(stock_actual), 0) AS unidades
     FROM productos
-    WHERE activo = 1
-  `);
+    WHERE activo = 1 AND id_empresa = ?
+  `,
+    [id_empresa]
+  );
 
   return {
     valor_venta: Number(row.valor_venta),
@@ -209,25 +212,29 @@ export async function valoracion() {
   };
 }
 
-export async function ajustes(query = {}) {
-  return kardex({
+export async function ajustes(id_empresa, query = {}) {
+  return kardex(id_empresa, {
     ...query,
     tipo: 'AJUSTE'
   });
 }
 
-export async function inventarioPorCategoria() {
-  const [rows] = await pool.query(`
+export async function inventarioPorCategoria(id_empresa) {
+  const [rows] = await pool.query(
+    `
     SELECT c.id_categoria, c.nombre AS categoria,
            COUNT(p.id_producto) AS productos,
            COALESCE(SUM(p.stock_actual), 0) AS unidades,
            COALESCE(SUM(p.stock_actual * p.precio_venta), 0) AS valor_venta
     FROM categorias c
-    LEFT JOIN productos p ON p.id_categoria = c.id_categoria AND p.activo = 1
-    WHERE c.activo = 1
+    LEFT JOIN productos p
+      ON p.id_categoria = c.id_categoria AND p.activo = 1 AND p.id_empresa = ?
+    WHERE c.activo = 1 AND c.id_empresa = ?
     GROUP BY c.id_categoria, c.nombre
     ORDER BY unidades DESC
-  `);
+  `,
+    [id_empresa, id_empresa]
+  );
   return rows.map((r) => ({
     ...r,
     unidades: Number(r.unidades),
@@ -236,9 +243,15 @@ export async function inventarioPorCategoria() {
   }));
 }
 
-export async function getNegocio() {
+export async function getNegocio(id_empresa) {
   const [rows] = await pool.query(
-    'SELECT nombre_negocio, moneda FROM configuracion_negocio WHERE id_configuracion = 1 LIMIT 1'
+    `
+    SELECT nombre_negocio, moneda
+    FROM configuracion_negocio
+    WHERE id_empresa = ?
+    LIMIT 1
+  `,
+    [id_empresa]
   );
   return rows[0] || { nombre_negocio: 'Inventory Pro', moneda: 'CRC' };
 }

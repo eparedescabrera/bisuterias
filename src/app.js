@@ -7,6 +7,8 @@ import { configureCloudinary } from './config/cloudinary.js';
 import authRoutes from './routes/auth.routes.js';
 import adminRoutes from './routes/admin.routes.js';
 import publicRoutes from './routes/public.routes.js';
+import suscripcionRoutes from './routes/suscripcion.routes.js';
+import superAdminRoutes from './routes/superAdmin.routes.js';
 import notFoundMiddleware from './middlewares/notFound.middleware.js';
 import errorMiddleware from './middlewares/error.middleware.js';
 import { attachRequestId } from './utils/requestId.js';
@@ -98,7 +100,7 @@ app.get('/api/health', async (_req, res) => {
       database,
       cloudinary: cloudinaryConfigured ? 'ok' : 'missing',
       environment: env.nodeEnv,
-      build: '2026-07-23-cloudinary-health'
+      build: '2026-07-24-multiempresa'
     },
     database === 'ok' ? 'API operativa' : 'API con falla de base de datos',
     database === 'ok' ? 200 : 503
@@ -106,6 +108,8 @@ app.get('/api/health', async (_req, res) => {
 });
 
 app.use('/api/auth', authRoutes);
+app.use('/api/suscripcion', suscripcionRoutes);
+app.use('/api/super-admin', superAdminRoutes);
 app.use('/api/admin', adminRoutes);
 app.use('/api/public', publicRoutes);
 

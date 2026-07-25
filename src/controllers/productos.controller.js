@@ -2,6 +2,7 @@ import * as productosService from '../services/productos.service.js';
 import { success } from '../utils/response.js';
 import asyncHandler from '../utils/asyncHandler.js';
 import ApiError from '../utils/ApiError.js';
+import { getEmpresaId } from '../utils/tenant.js';
 
 function parseProductoBody(req) {
   if (req.body.datos) {
@@ -17,12 +18,13 @@ function parseProductoBody(req) {
 }
 
 export const list = asyncHandler(async (req, res) => {
-  const result = await productosService.listProductos(req.query);
+  const result = await productosService.listProductos(getEmpresaId(req), req.query);
   return success(res, result.data, 'Productos listados', 200, result.meta);
 });
 
 export const getById = asyncHandler(async (req, res) => {
   const data = await productosService.getProductoAdminById(
+    getEmpresaId(req),
     Number(req.params.id)
   );
   return success(res, data, 'Producto obtenido');
@@ -31,6 +33,7 @@ export const getById = asyncHandler(async (req, res) => {
 export const create = asyncHandler(async (req, res) => {
   const payload = parseProductoBody(req);
   const data = await productosService.createProducto(
+    getEmpresaId(req),
     payload,
     req.files || [],
     req.user.id_usuario
@@ -41,6 +44,7 @@ export const create = asyncHandler(async (req, res) => {
 export const update = asyncHandler(async (req, res) => {
   const payload = parseProductoBody(req);
   const data = await productosService.updateProducto(
+    getEmpresaId(req),
     Number(req.params.id),
     payload
   );
@@ -48,12 +52,13 @@ export const update = asyncHandler(async (req, res) => {
 });
 
 export const remove = asyncHandler(async (req, res) => {
-  await productosService.deleteProducto(Number(req.params.id));
+  await productosService.deleteProducto(getEmpresaId(req), Number(req.params.id));
   return success(res, null, 'Producto desactivado');
 });
 
 export const patchPublicacion = asyncHandler(async (req, res) => {
   const data = await productosService.patchPublicacion(
+    getEmpresaId(req),
     Number(req.params.id),
     req.body.estado_publicacion
   );
@@ -62,6 +67,7 @@ export const patchPublicacion = asyncHandler(async (req, res) => {
 
 export const patchDestacado = asyncHandler(async (req, res) => {
   const data = await productosService.patchDestacado(
+    getEmpresaId(req),
     Number(req.params.id),
     req.body.destacado
   );
@@ -70,6 +76,7 @@ export const patchDestacado = asyncHandler(async (req, res) => {
 
 export const patchDisponibilidad = asyncHandler(async (req, res) => {
   const data = await productosService.patchDisponibilidad(
+    getEmpresaId(req),
     Number(req.params.id),
     req.body.estado_disponibilidad
   );

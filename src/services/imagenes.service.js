@@ -32,17 +32,35 @@ export async function listImagenes(id_producto) {
   return rows;
 }
 
-export async function addImagenes(id_producto, files = []) {
+export async function assertProductoDeEmpresa(id_empresa, id_producto) {
+  const [producto] = await pool.query(
+    `
+    SELECT id_producto FROM productos
+    WHERE id_producto = ? AND id_empresa = ? AND activo = 1
+    LIMIT 1
+  `,
+    [id_producto, id_empresa]
+  );
+  if (!producto.length) {
+    throw new ApiError(404, 'Producto no encontrado');
+  }
+}
+
+export async function addImagenes(id_producto, files = [], id_empresa = null) {
   if (!files.length) {
     throw new ApiError(400, 'Debe enviar al menos una imagen');
   }
 
-  const [producto] = await pool.query(
-    'SELECT id_producto FROM productos WHERE id_producto = ? AND activo = 1 LIMIT 1',
-    [id_producto]
-  );
-  if (!producto.length) {
-    throw new ApiError(404, 'Producto no encontrado');
+  if (id_empresa != null) {
+    await assertProductoDeEmpresa(id_empresa, id_producto);
+  } else {
+    const [producto] = await pool.query(
+      'SELECT id_producto FROM productos WHERE id_producto = ? AND activo = 1 LIMIT 1',
+      [id_producto]
+    );
+    if (!producto.length) {
+      throw new ApiError(404, 'Producto no encontrado');
+    }
   }
 
   const actuales = await countActiveImages(id_producto);
@@ -264,5 +282,6 @@ export default {
   addImagenesBase64,
   deleteImagen,
   setImagenPrincipal,
-  uploadFilesForNewProduct
+  uploadFilesForNewProduct,
+  assertProductoDeEmpresa
 };

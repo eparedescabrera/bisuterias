@@ -19,25 +19,29 @@ function orderClause(orden) {
   }
 }
 
-export async function listCategoriasPublicas() {
-  const [rows] = await pool.query(`
+export async function listCategoriasPublicas(id_empresa) {
+  const [rows] = await pool.query(
+    `
     SELECT id_categoria, nombre, slug, descripcion, imagen_url, orden_visual
     FROM categorias
-    WHERE activo = 1 AND estado = 1
+    WHERE id_empresa = ? AND activo = 1 AND estado = 1
     ORDER BY orden_visual ASC, nombre ASC
-  `);
+  `,
+    [id_empresa]
+  );
   return rows;
 }
 
-export async function listProductosPublicos(query = {}) {
+export async function listProductosPublicos(id_empresa, query = {}) {
   const { pagina, limite, offset } = parsePagination(query);
   const where = [
+    'p.id_empresa = ?',
     'p.activo = 1',
     "p.estado_publicacion = 'Publicado'",
     'c.activo = 1',
     'c.estado = 1'
   ];
-  const params = [];
+  const params = [id_empresa];
 
   if (query.busqueda) {
     where.push('(p.nombre LIKE ? OR p.descripcion_corta LIKE ? OR p.codigo LIKE ?)');
@@ -75,7 +79,7 @@ export async function listProductosPublicos(query = {}) {
     params
   );
 
-  const config = await getConfiguracionPublica();
+  const config = await getConfiguracionPublica(id_empresa);
 
   const [rows] = await pool.query(
     `
@@ -116,8 +120,8 @@ export async function listProductosPublicos(query = {}) {
   };
 }
 
-export async function listDestacados(limite = 8) {
-  const result = await listProductosPublicos({
+export async function listDestacados(id_empresa, limite = 8) {
+  const result = await listProductosPublicos(id_empresa, {
     destacado: true,
     limite,
     pagina: 1,
@@ -126,8 +130,8 @@ export async function listDestacados(limite = 8) {
   return result.data;
 }
 
-export async function listRecientes(limite = 8) {
-  const result = await listProductosPublicos({
+export async function listRecientes(id_empresa, limite = 8) {
+  const result = await listProductosPublicos(id_empresa, {
     limite,
     pagina: 1,
     orden: 'recientes'
@@ -135,8 +139,8 @@ export async function listRecientes(limite = 8) {
   return result.data;
 }
 
-export async function getProductoPublicoBySlug(slug) {
-  const config = await getConfiguracionPublica();
+export async function getProductoPublicoBySlug(id_empresa, slug) {
+  const config = await getConfiguracionPublica(id_empresa);
 
   const [rows] = await pool.query(
     `
@@ -149,12 +153,13 @@ export async function getProductoPublicoBySlug(slug) {
     FROM productos p
     INNER JOIN categorias c ON c.id_categoria = p.id_categoria
     WHERE p.slug = ?
+      AND p.id_empresa = ?
       AND p.activo = 1
       AND p.estado_publicacion = 'Publicado'
       AND c.activo = 1 AND c.estado = 1
     LIMIT 1
   `,
-    [slug]
+    [slug, id_empresa]
   );
 
   if (!rows.length) {
@@ -200,25 +205,26 @@ export async function getProductoPublicoBySlug(slug) {
   };
 }
 
-export async function getRelacionados(slug, limite = 4) {
+export async function getRelacionados(id_empresa, slug, limite = 4) {
   const [base] = await pool.query(
     `
     SELECT p.id_producto, p.id_categoria
     FROM productos p
     INNER JOIN categorias c ON c.id_categoria = p.id_categoria
     WHERE p.slug = ?
+      AND p.id_empresa = ?
       AND p.activo = 1
       AND p.estado_publicacion = 'Publicado'
     LIMIT 1
   `,
-    [slug]
+    [slug, id_empresa]
   );
 
   if (!base.length) {
     throw new ApiError(404, 'Producto no encontrado');
   }
 
-  const result = await listProductosPublicos({
+  const result = await listProductosPublicos(id_empresa, {
     categoria: base[0].id_categoria,
     limite,
     pagina: 1
@@ -228,7 +234,6 @@ export async function getRelacionados(slug, limite = 4) {
 }
 
 export default {
-  getConfiguracionPublica,
   listCategoriasPublicas,
   listProductosPublicos,
   listDestacados,

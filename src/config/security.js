@@ -6,11 +6,21 @@ export const CSRF_TTL_MS = REFRESH_TTL_MS;
 
 export const ALLOWED_IMAGE_MIME = new Set([
   'image/jpeg',
+  'image/jpg',
+  'image/pjpeg',
   'image/png',
-  'image/webp'
+  'image/webp',
+  'image/gif'
 ]);
 
-export const ALLOWED_IMAGE_EXT = new Set(['.jpg', '.jpeg', '.png', '.webp']);
+export const ALLOWED_IMAGE_EXT = new Set([
+  '.jpg',
+  '.jpeg',
+  '.png',
+  '.webp',
+  '.gif',
+  '.jfif'
+]);
 
 export function getClientIp(req) {
   const forwarded = req.headers['x-forwarded-for'];

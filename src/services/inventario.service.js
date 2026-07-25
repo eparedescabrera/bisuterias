@@ -43,14 +43,10 @@ function assertMotivo(motivo) {
   return value;
 }
 
-/**
- * Kardex / listado Doc 3: GET /admin/movimientos
- * Filtros Doc 6: producto, tipo, usuario, fechas / periodo
- */
-export async function listMovimientos(query = {}) {
+export async function listMovimientos(id_empresa, query = {}) {
   const { pagina, limite, offset } = parsePagination(query);
-  const where = ['1=1'];
-  const params = [];
+  const where = ['p.id_empresa = ?'];
+  const params = [id_empresa];
 
   if (query.id_producto) {
     where.push('m.id_producto = ?');
@@ -124,7 +120,7 @@ export async function listMovimientos(query = {}) {
   };
 }
 
-export async function crearMovimiento(payload, id_usuario) {
+export async function crearMovimiento(id_empresa, payload, id_usuario) {
   const { id_producto, tipo_movimiento, cantidad, referencia = null } = payload;
   const motivo = assertMotivo(payload.motivo);
 
@@ -140,10 +136,10 @@ export async function crearMovimiento(payload, id_usuario) {
       `
       SELECT stock_actual, estado_disponibilidad, activo, codigo, nombre, stock_minimo
       FROM productos
-      WHERE id_producto = ?
+      WHERE id_producto = ? AND id_empresa = ?
       FOR UPDATE
     `,
-      [id_producto]
+      [id_producto, id_empresa]
     );
 
     if (!rows.length || !rows[0].activo) {
@@ -180,9 +176,9 @@ export async function crearMovimiento(payload, id_usuario) {
       `
       UPDATE productos
       SET stock_actual = ?, estado_disponibilidad = ?
-      WHERE id_producto = ?
+      WHERE id_producto = ? AND id_empresa = ?
     `,
-      [stock_nuevo, estado_disponibilidad, id_producto]
+      [stock_nuevo, estado_disponibilidad, id_producto, id_empresa]
     );
 
     const [result] = await connection.query(
@@ -228,33 +224,36 @@ export async function crearMovimiento(payload, id_usuario) {
   }
 }
 
-export async function listStockBajo() {
-  const [rows] = await pool.query(`
+export async function listStockBajo(id_empresa) {
+  const [rows] = await pool.query(
+    `
     SELECT id_producto, codigo, nombre, stock_actual, stock_minimo,
            estado_disponibilidad, estado_publicacion
     FROM productos
-    WHERE activo = 1 AND stock_actual <= stock_minimo
+    WHERE id_empresa = ? AND activo = 1 AND stock_actual <= stock_minimo
     ORDER BY stock_actual ASC, nombre ASC
-  `);
+  `,
+    [id_empresa]
+  );
   return rows;
 }
 
-export async function getProductoInventario(id_producto) {
+export async function getProductoInventario(id_empresa, id_producto) {
   const [rows] = await pool.query(
     `
     SELECT id_producto, codigo, nombre, stock_actual, stock_minimo,
            estado_disponibilidad, estado_publicacion, activo
     FROM productos
-    WHERE id_producto = ?
+    WHERE id_producto = ? AND id_empresa = ?
     LIMIT 1
   `,
-    [id_producto]
+    [id_producto, id_empresa]
   );
   if (!rows.length) {
     throw new ApiError(404, 'Producto no encontrado');
   }
 
-  const kardex = await listMovimientos({
+  const kardex = await listMovimientos(id_empresa, {
     id_producto,
     pagina: 1,
     limite: 20

@@ -1,6 +1,7 @@
 import { Router } from 'express';
 import authMiddleware from '../middlewares/auth.middleware.js';
 import { requireAdmin } from '../middlewares/role.middleware.js';
+import { requireEmpresaActiva } from '../middlewares/empresa.middleware.js';
 import categoriasRoutes from './categorias.routes.js';
 import productosRoutes from './productos.routes.js';
 import imagenesRoutes from './imagenes.routes.js';
@@ -12,8 +13,8 @@ import seguridadRoutes from './seguridad.routes.js';
 
 const router = Router();
 
-// CSRF no aplica cross-origin (Vercel→Railway). Protección: JWT + rol + CORS.
-router.use(authMiddleware, requireAdmin);
+// JWT + Administrador de empresa + empresa Activa
+router.use(authMiddleware, requireAdmin, requireEmpresaActiva);
 
 router.use('/categorias', categoriasRoutes);
 router.use('/productos', productosRoutes);

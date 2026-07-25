@@ -11,17 +11,23 @@ const storage = multer.memoryStorage();
 
 function fileFilter(_req, file, cb) {
   const ext = path.extname(file.originalname || '').toLowerCase();
+  const mime = String(file.mimetype || '').toLowerCase();
 
-  if (ext === '.svg' || file.mimetype === 'image/svg+xml') {
+  if (ext === '.svg' || mime === 'image/svg+xml') {
     cb(new ApiError(415, 'SVG no permitido por seguridad', [], 'UNSUPPORTED_MEDIA'));
     return;
   }
 
-  if (!ALLOWED_IMAGE_MIME.has(file.mimetype)) {
+  if (
+    mime.includes('heic') ||
+    mime.includes('heif') ||
+    ext === '.heic' ||
+    ext === '.heif'
+  ) {
     cb(
       new ApiError(
         400,
-        'Formato de imagen no permitido. Use JPEG, PNG o WEBP',
+        'El formato HEIC/HEIF (iPhone) no está permitido. Guarde o exporte la imagen como JPG o PNG e intente de nuevo.',
         [],
         'VALIDATION_ERROR'
       )
@@ -29,7 +35,25 @@ function fileFilter(_req, file, cb) {
     return;
   }
 
-  if (ext && !ALLOWED_IMAGE_EXT.has(ext)) {
+  const mimeOk = ALLOWED_IMAGE_MIME.has(mime);
+  const extOk = !ext || ALLOWED_IMAGE_EXT.has(ext);
+
+  // Algunos móviles envían MIME vacío o genérico; aceptar si la extensión es válida
+  if (!mimeOk && !(mime === 'application/octet-stream' && extOk && ext)) {
+    cb(
+      new ApiError(
+        400,
+        'Formato de imagen no permitido. Use JPEG, PNG o WEBP.',
+        [],
+        'VALIDATION_ERROR'
+      )
+    );
+    return;
+  }
+
+  if (ext && !ALLOWED_IMAGE_EXT.has(ext) && mimeOk) {
+    // MIME válido pero extensión rara: permitir (p. ej. .jpe)
+  } else if (ext && !ALLOWED_IMAGE_EXT.has(ext) && !mimeOk) {
     cb(
       new ApiError(
         400,

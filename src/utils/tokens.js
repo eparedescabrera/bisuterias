@@ -7,14 +7,21 @@ export function createSessionId() {
   return randomUUID();
 }
 
-export function signAccessToken({ id_usuario, nombre_usuario, rol, sessionId }) {
+export function signAccessToken({
+  id_usuario,
+  nombre_usuario,
+  rol,
+  sessionId,
+  id_empresa = null
+}) {
   return jwt.sign(
     {
       sub: id_usuario,
       id_usuario,
       nombre_usuario,
       rol,
-      sessionId
+      sessionId,
+      id_empresa: id_empresa == null ? null : Number(id_empresa)
     },
     env.jwt.secret,
     {

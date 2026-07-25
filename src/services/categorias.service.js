@@ -3,9 +3,9 @@ import ApiError from '../utils/ApiError.js';
 import { uniqueSlug } from '../utils/slug.js';
 import { parsePagination, buildMeta } from '../utils/pagination.js';
 
-async function slugExists(slug, excludeId = null) {
-  const params = [slug];
-  let sql = 'SELECT id_categoria FROM categorias WHERE slug = ?';
+async function slugExists(id_empresa, slug, excludeId = null) {
+  const params = [id_empresa, slug];
+  let sql = 'SELECT id_categoria FROM categorias WHERE id_empresa = ? AND slug = ?';
   if (excludeId) {
     sql += ' AND id_categoria <> ?';
     params.push(excludeId);
@@ -15,10 +15,10 @@ async function slugExists(slug, excludeId = null) {
   return rows.length > 0;
 }
 
-export async function listCategorias(query = {}) {
+export async function listCategorias(id_empresa, query = {}) {
   const { pagina, limite, offset } = parsePagination(query);
-  const where = ['1=1'];
-  const params = [];
+  const where = ['id_empresa = ?'];
+  const params = [id_empresa];
 
   if (query.busqueda) {
     where.push('(nombre LIKE ? OR slug LIKE ? OR descripcion LIKE ?)');
@@ -56,16 +56,16 @@ export async function listCategorias(query = {}) {
   };
 }
 
-export async function getCategoriaById(id) {
+export async function getCategoriaById(id_empresa, id) {
   const [rows] = await pool.query(
     `
     SELECT id_categoria, nombre, slug, descripcion, imagen_url, imagen_public_id,
            estado, activo, orden_visual, fecha_creacion, fecha_actualizacion
     FROM categorias
-    WHERE id_categoria = ?
+    WHERE id_categoria = ? AND id_empresa = ?
     LIMIT 1
   `,
-    [id]
+    [id, id_empresa]
   );
 
   if (!rows.length) {
@@ -75,43 +75,51 @@ export async function getCategoriaById(id) {
   return rows[0];
 }
 
-export async function createCategoria(payload) {
+export async function createCategoria(id_empresa, payload) {
   const nombre = String(payload.nombre).trim();
 
   const [dup] = await pool.query(
-    'SELECT id_categoria FROM categorias WHERE LOWER(nombre) = LOWER(?) LIMIT 1',
-    [nombre]
+    `
+    SELECT id_categoria FROM categorias
+    WHERE id_empresa = ? AND LOWER(nombre) = LOWER(?)
+    LIMIT 1
+  `,
+    [id_empresa, nombre]
   );
   if (dup.length) {
     throw new ApiError(409, 'Ya existe una categoría con ese nombre');
   }
 
-  const slug = await uniqueSlug(nombre, slugExists);
+  const slug = await uniqueSlug(nombre, (s) => slugExists(id_empresa, s));
   const estado = payload.estado === undefined ? 1 : payload.estado ? 1 : 0;
   const orden_visual = Number(payload.orden_visual || 0);
   const descripcion = payload.descripcion || null;
 
   const [result] = await pool.query(
     `
-    INSERT INTO categorias (nombre, slug, descripcion, estado, activo, orden_visual)
-    VALUES (?, ?, ?, ?, 1, ?)
+    INSERT INTO categorias (id_empresa, nombre, slug, descripcion, estado, activo, orden_visual)
+    VALUES (?, ?, ?, ?, ?, 1, ?)
   `,
-    [nombre, slug, descripcion, estado, orden_visual]
+    [id_empresa, nombre, slug, descripcion, estado, orden_visual]
   );
 
-  return getCategoriaById(result.insertId);
+  return getCategoriaById(id_empresa, result.insertId);
 }
 
-export async function updateCategoria(id, payload) {
-  const current = await getCategoriaById(id);
+export async function updateCategoria(id_empresa, id, payload) {
+  const current = await getCategoriaById(id_empresa, id);
 
   const nombre =
     payload.nombre !== undefined ? String(payload.nombre).trim() : current.nombre;
 
   if (payload.nombre !== undefined) {
     const [dup] = await pool.query(
-      'SELECT id_categoria FROM categorias WHERE LOWER(nombre) = LOWER(?) AND id_categoria <> ? LIMIT 1',
-      [nombre, id]
+      `
+      SELECT id_categoria FROM categorias
+      WHERE id_empresa = ? AND LOWER(nombre) = LOWER(?) AND id_categoria <> ?
+      LIMIT 1
+    `,
+      [id_empresa, nombre, id]
     );
     if (dup.length) {
       throw new ApiError(409, 'Ya existe una categoría con ese nombre');
@@ -120,7 +128,7 @@ export async function updateCategoria(id, payload) {
 
   let slug = current.slug;
   if (payload.nombre !== undefined && nombre !== current.nombre) {
-    slug = await uniqueSlug(nombre, (s) => slugExists(s, id));
+    slug = await uniqueSlug(nombre, (s) => slugExists(id_empresa, s, id));
   }
 
   const descripcion =
@@ -136,30 +144,23 @@ export async function updateCategoria(id, payload) {
     `
     UPDATE categorias
     SET nombre = ?, slug = ?, descripcion = ?, estado = ?, orden_visual = ?
-    WHERE id_categoria = ?
+    WHERE id_categoria = ? AND id_empresa = ?
   `,
-    [nombre, slug, descripcion, estado, orden_visual, id]
+    [nombre, slug, descripcion, estado, orden_visual, id, id_empresa]
   );
 
-  return getCategoriaById(id);
+  return getCategoriaById(id_empresa, id);
 }
 
-export async function deleteCategoria(id) {
-  await getCategoriaById(id);
-
-  const [productos] = await pool.query(
-    'SELECT id_producto FROM productos WHERE id_categoria = ? AND activo = 1 LIMIT 1',
-    [id]
-  );
-
-  if (productos.length) {
-    // Soft delete still allowed; physical delete would fail FK.
-    // Doc: never physical delete if products exist — we always soft delete.
-  }
+export async function deleteCategoria(id_empresa, id) {
+  await getCategoriaById(id_empresa, id);
 
   await pool.query(
-    'UPDATE categorias SET activo = 0, estado = 0 WHERE id_categoria = ?',
-    [id]
+    `
+    UPDATE categorias SET activo = 0, estado = 0
+    WHERE id_categoria = ? AND id_empresa = ?
+  `,
+    [id, id_empresa]
   );
 
   return true;

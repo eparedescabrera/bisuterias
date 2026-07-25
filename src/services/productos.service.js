@@ -5,9 +5,9 @@ import { uniqueSlug } from '../utils/slug.js';
 import { parsePagination, buildMeta } from '../utils/pagination.js';
 import { uploadFilesForNewProduct } from './imagenes.service.js';
 
-async function slugExists(slug, excludeId = null) {
-  const params = [slug];
-  let sql = 'SELECT id_producto FROM productos WHERE slug = ?';
+async function slugExists(id_empresa, slug, excludeId = null) {
+  const params = [id_empresa, slug];
+  let sql = 'SELECT id_producto FROM productos WHERE id_empresa = ? AND slug = ?';
   if (excludeId) {
     sql += ' AND id_producto <> ?';
     params.push(excludeId);
@@ -17,15 +17,15 @@ async function slugExists(slug, excludeId = null) {
   return rows.length > 0;
 }
 
-async function assertCategoriaActiva(id_categoria, connection = pool) {
+async function assertCategoriaActiva(id_empresa, id_categoria, connection = pool) {
   const [rows] = await connection.query(
     `
     SELECT id_categoria, nombre
     FROM categorias
-    WHERE id_categoria = ? AND activo = 1 AND estado = 1
+    WHERE id_categoria = ? AND id_empresa = ? AND activo = 1 AND estado = 1
     LIMIT 1
   `,
-    [id_categoria]
+    [id_categoria, id_empresa]
   );
   if (!rows.length) {
     throw new ApiError(400, 'Categoría inactiva o no encontrada');
@@ -34,8 +34,6 @@ async function assertCategoriaActiva(id_categoria, connection = pool) {
 }
 
 function mapProductPayload(payload) {
-  // Doc 2 columns: color_estilo, material.
-  // Doc 3 example uses "color" (accepted as alias) and "talla" (NOT in schema — ignored).
   const color_estilo =
     payload.color_estilo !== undefined
       ? payload.color_estilo
@@ -82,16 +80,16 @@ function orderClause(orden) {
   }
 }
 
-export async function getProductoAdminById(id) {
+export async function getProductoAdminById(id_empresa, id) {
   const [rows] = await pool.query(
     `
     SELECT p.*, c.id_categoria AS cat_id, c.nombre AS categoria_nombre
     FROM productos p
     INNER JOIN categorias c ON c.id_categoria = p.id_categoria
-    WHERE p.id_producto = ?
+    WHERE p.id_producto = ? AND p.id_empresa = ?
     LIMIT 1
   `,
-    [id]
+    [id, id_empresa]
   );
 
   if (!rows.length) {
@@ -140,10 +138,10 @@ export async function getProductoAdminById(id) {
   };
 }
 
-export async function listProductos(query = {}) {
+export async function listProductos(id_empresa, query = {}) {
   const { pagina, limite, offset } = parsePagination(query);
-  const where = ['p.activo = 1'];
-  const params = [];
+  const where = ['p.activo = 1', 'p.id_empresa = ?'];
+  const params = [id_empresa];
 
   if (query.busqueda) {
     where.push(
@@ -212,7 +210,7 @@ export async function listProductos(query = {}) {
   };
 }
 
-export async function createProducto(payload, files = [], id_usuario) {
+export async function createProducto(id_empresa, payload, files = [], id_usuario) {
   const data = mapProductPayload(payload);
   const stock_inicial = Number(payload.stock_inicial || 0);
 
@@ -220,19 +218,18 @@ export async function createProducto(payload, files = [], id_usuario) {
     throw new ApiError(400, 'Máximo 6 imágenes por producto');
   }
 
-  await assertCategoriaActiva(data.id_categoria);
+  await assertCategoriaActiva(id_empresa, data.id_categoria);
 
   const [dupCodigo] = await pool.query(
-    'SELECT id_producto FROM productos WHERE codigo = ? LIMIT 1',
-    [data.codigo]
+    'SELECT id_producto FROM productos WHERE id_empresa = ? AND codigo = ? LIMIT 1',
+    [id_empresa, data.codigo]
   );
   if (dupCodigo.length) {
     throw new ApiError(409, 'El código de producto ya existe');
   }
 
-  const slug = await uniqueSlug(data.nombre, slugExists);
-  const estado_disponibilidad =
-    stock_inicial === 0 ? 'Agotado' : 'Disponible';
+  const slug = await uniqueSlug(data.nombre, (s) => slugExists(id_empresa, s));
+  const estado_disponibilidad = stock_inicial === 0 ? 'Agotado' : 'Disponible';
 
   const connection = await pool.getConnection();
   let id_producto;
@@ -243,13 +240,14 @@ export async function createProducto(payload, files = [], id_usuario) {
     const [result] = await connection.query(
       `
       INSERT INTO productos (
-        codigo, nombre, slug, id_categoria, descripcion_corta, descripcion_completa,
+        id_empresa, codigo, nombre, slug, id_categoria, descripcion_corta, descripcion_completa,
         precio_venta, precio_anterior, stock_actual, stock_minimo, unidad_medida,
         marca, color_estilo, material, personalizable, estado_disponibilidad,
         estado_publicacion, destacado, activo
-      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 1)
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 1)
     `,
       [
+        id_empresa,
         data.codigo,
         data.nombre,
         slug,
@@ -337,21 +335,25 @@ export async function createProducto(payload, files = [], id_usuario) {
     }
   }
 
-  return getProductoAdminById(id_producto);
+  return getProductoAdminById(id_empresa, id_producto);
 }
 
-export async function updateProducto(id, payload) {
-  const current = await getProductoAdminById(id);
+export async function updateProducto(id_empresa, id, payload) {
+  const current = await getProductoAdminById(id_empresa, id);
   const data = mapProductPayload({ ...current, ...payload });
 
   if (payload.id_categoria !== undefined) {
-    await assertCategoriaActiva(payload.id_categoria);
+    await assertCategoriaActiva(id_empresa, payload.id_categoria);
   }
 
   if (payload.codigo && payload.codigo !== current.codigo) {
     const [dup] = await pool.query(
-      'SELECT id_producto FROM productos WHERE codigo = ? AND id_producto <> ? LIMIT 1',
-      [payload.codigo, id]
+      `
+      SELECT id_producto FROM productos
+      WHERE id_empresa = ? AND codigo = ? AND id_producto <> ?
+      LIMIT 1
+    `,
+      [id_empresa, payload.codigo, id]
     );
     if (dup.length) {
       throw new ApiError(409, 'El código de producto ya existe');
@@ -360,7 +362,7 @@ export async function updateProducto(id, payload) {
 
   let slug = current.slug;
   if (payload.nombre && payload.nombre !== current.nombre) {
-    slug = await uniqueSlug(payload.nombre, (s) => slugExists(s, id));
+    slug = await uniqueSlug(payload.nombre, (s) => slugExists(id_empresa, s, id));
   }
 
   await pool.query(
@@ -371,7 +373,7 @@ export async function updateProducto(id, payload) {
       precio_venta = ?, precio_anterior = ?, stock_minimo = ?,
       unidad_medida = ?, marca = ?, color_estilo = ?, material = ?,
       personalizable = ?, estado_disponibilidad = ?, estado_publicacion = ?, destacado = ?
-    WHERE id_producto = ?
+    WHERE id_producto = ? AND id_empresa = ?
   `,
     [
       payload.codigo ?? current.codigo,
@@ -413,47 +415,75 @@ export async function updateProducto(id, payload) {
         : current.destacado
           ? 1
           : 0,
-      id
+      id,
+      id_empresa
     ]
   );
 
-  return getProductoAdminById(id);
+  return getProductoAdminById(id_empresa, id);
 }
 
-export async function deleteProducto(id) {
-  await getProductoAdminById(id);
+export async function deleteProducto(id_empresa, id) {
+  await getProductoAdminById(id_empresa, id);
   await pool.query(
-    'UPDATE productos SET activo = 0, estado_publicacion = ? WHERE id_producto = ?',
-    ['Oculto', id]
+    `
+    UPDATE productos SET activo = 0, estado_publicacion = ?
+    WHERE id_producto = ? AND id_empresa = ?
+  `,
+    ['Oculto', id, id_empresa]
   );
   return true;
 }
 
-export async function patchPublicacion(id, estado_publicacion) {
-  await getProductoAdminById(id);
+export async function patchPublicacion(id_empresa, id, estado_publicacion) {
+  await getProductoAdminById(id_empresa, id);
   await pool.query(
-    'UPDATE productos SET estado_publicacion = ? WHERE id_producto = ?',
-    [estado_publicacion, id]
+    `
+    UPDATE productos SET estado_publicacion = ?
+    WHERE id_producto = ? AND id_empresa = ?
+  `,
+    [estado_publicacion, id, id_empresa]
   );
-  return getProductoAdminById(id);
+  return getProductoAdminById(id_empresa, id);
 }
 
-export async function patchDestacado(id, destacado) {
-  await getProductoAdminById(id);
-  await pool.query('UPDATE productos SET destacado = ? WHERE id_producto = ?', [
-    destacado ? 1 : 0,
-    id
-  ]);
-  return getProductoAdminById(id);
+export async function patchDestacado(id_empresa, id, destacado) {
+  await getProductoAdminById(id_empresa, id);
+  await pool.query(
+    `
+    UPDATE productos SET destacado = ?
+    WHERE id_producto = ? AND id_empresa = ?
+  `,
+    [destacado ? 1 : 0, id, id_empresa]
+  );
+  return getProductoAdminById(id_empresa, id);
 }
 
-export async function patchDisponibilidad(id, estado_disponibilidad) {
-  await getProductoAdminById(id);
+export async function patchDisponibilidad(id_empresa, id, estado_disponibilidad) {
+  await getProductoAdminById(id_empresa, id);
   await pool.query(
-    'UPDATE productos SET estado_disponibilidad = ? WHERE id_producto = ?',
-    [estado_disponibilidad, id]
+    `
+    UPDATE productos SET estado_disponibilidad = ?
+    WHERE id_producto = ? AND id_empresa = ?
+  `,
+    [estado_disponibilidad, id, id_empresa]
   );
-  return getProductoAdminById(id);
+  return getProductoAdminById(id_empresa, id);
+}
+
+/** Verifica que el producto pertenezca a la empresa (imágenes, etc.). */
+export async function assertProductoEmpresa(id_empresa, id_producto) {
+  const [rows] = await pool.query(
+    `
+    SELECT id_producto FROM productos
+    WHERE id_producto = ? AND id_empresa = ? AND activo = 1
+    LIMIT 1
+  `,
+    [id_producto, id_empresa]
+  );
+  if (!rows.length) {
+    throw new ApiError(404, 'Producto no encontrado');
+  }
 }
 
 export default {
@@ -464,5 +494,6 @@ export default {
   deleteProducto,
   patchPublicacion,
   patchDestacado,
-  patchDisponibilidad
+  patchDisponibilidad,
+  assertProductoEmpresa
 };
